@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Referential (NR) for Shipments</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/bwip-js@4.8.0/dist/bwip-js.min.js"></script>
+    <script src="bwip-js.min.js"></script>
+    <script src="https://unpkg.com/bwip-js@4.8.0/dist/bwip-js.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* --- 1. THEME & UI VARIABLES --- */
+        :root {
+            --bg-body: #f8fafc;
+            --bg-sidebar: #ffffff;
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --border: #e2e8f0;
+            --text-main: #334155;
+            --text-label: #64748b;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: var(--bg-body);
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            color: var(--text-main);
+            overflow: hidden; 
+        }
+
+        /* --- 2. SIDEBAR CONTROL (Premium Style) --- */
+        .sidebar {
+            width: 420px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.05);
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(to right, #ffffff, #f1f5f9);
+        }
+        .sidebar-header h2 { margin: 0; font-size: 1.2rem; color: #1e293b; display: flex; align-items: center; gap: 10px; }
+        
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+        }
+        .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e0; border-radius: 4px; }
+
+        /* Input Styles */
+        .section-title {
+            font-size: 0.75rem; font-weight: 700; color: var(--text-label);
+            text-transform: uppercase; letter-spacing: 0.05em; margin: 25px 0 10px 0;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: #475569; }
+        
+        .input-wrapper { position: relative; }
+        .input-wrapper i {
+            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            color: #94a3b8; font-size: 0.9rem; pointer-events: none;
+        }
+        .input-wrapper input, .input-wrapper textarea, .input-wrapper select {
+            width: 100%; padding: 10px 10px 10px 38px;
+            background: #f8fafc; border: 1px solid var(--border);
+            border-radius: 8px; font-family: 'Sarabun', sans-serif; font-size: 0.9rem;
+            color: #1e293b; box-sizing: border-box; transition: all 0.2s;
+        }
+        .input-wrapper input:focus, .input-wrapper textarea:focus {
+            background: #fff; border-color: var(--primary); outline: none;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        .input-wrapper input:focus + i { color: var(--primary); }
+
+        /* Highlight Card */
+        .highlight-card {
+            background: #eff6ff; border: 1px solid #bfdbfe;
+            border-radius: 10px; padding: 15px; margin-bottom: 15px;
+        }
+
+        /* Action Buttons */
+        .action-bar {
+            padding: 20px; border-top: 1px solid var(--border); background: #fff;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
+        }
+        .btn {
+            border: none; padding: 12px; border-radius: 8px;
+            font-family: 'Sarabun', sans-serif; font-weight: 600; font-size: 1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: #1e293b; color: white; }
+        .btn-secondary:hover { background: #0f172a; }
+
+        /* --- 3. PREVIEW AREA --- */
+        .preview-area {
+            flex: 1; padding: 40px;
+            display: flex; flex-direction: column; align-items: center;
+            overflow-y: auto; background-color: #f1f5f9;
+        }
+        .preview-header { margin-bottom: 20px; color: #64748b; font-weight: 500; }
+
+        /* --- 4. LABEL CSS (STRICT SIZE 4x10 INCH) --- */
+        /* ห้ามแก้ส่วนนี้เด็ดขาด เพื่อรักษาขนาดให้เท่าเดิม */
+        .label-container {
+            width: 4in; height: 10in; 
+            background-color: white; 
+            border: 1px solid #000; /* Border สีดำชัดเจนตอนพิมพ์ */
+            display: flex; flex-direction: column;
+            position: relative; 
+            font-family: Arial, Helvetica, sans-serif; 
+            color: black;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); /* Shadow เฉพาะในจอ */
+            margin-bottom: 40px;
+            flex-shrink: 0;
+            box-sizing: border-box; /* สำคัญ */
+        }
+
+        .row { border-bottom: 1px solid black; width: 100%; display: flex; overflow: hidden; }
+        .row.last { border-bottom: none; }
+        
+        .field-label { font-size: 8pt; font-weight: bold; position: absolute; top: 2px; left: 4px; }
+        .field-value { width: 100%; text-align: center; font-size: 22pt; font-weight: bold; margin-top: 18px; line-height: 1; }
+        .cell { position: relative; padding: 4px; box-sizing: border-box; }
+        
+        /* Fixed Heights according to standard */
+        .row-1 { height: 1in; } 
+        .cell-half { width: 50%; border-right: 1px solid black; font-size: 9.5pt; padding: 4px; box-sizing: border-box;}
+        .cell-half:last-child { border-right: none; }
+        .addr-text { white-space: pre-wrap; font-weight: normal; line-height: 1.2; font-size: 9pt;}
+        .addr-header { font-weight: bold; margin-bottom: 2px; font-size: 8pt; }
+
+        .row-2 { height: 2.2in; flex-direction: column; align-items: center; justify-content: center; padding: 5px; position: relative; }
+        .text-under-2d { font-size: 10pt; margin-top: 5px; font-family: 'Arial Narrow', sans-serif; text-align: center; width: 100%; }
+
+        .row-3 { height: 1in; display: block; position: relative; }
+        .barcode-1d-wrapper { text-align: center; margin-top: 2px; width: 100%; overflow: hidden;}
+
+        .row-4 { height: 0.6in; display: block; position: relative; }
+        .value-desc { font-size: 16pt; margin-top: 20px; }
+
+        .row-5 { height: 0.9in; display: block; position: relative; }
+        .row-6 { height: 0.7in; display: block; position: relative; }
+        .row-7 { height: 0.7in; display: block; position: relative; }
+        .row-8 { height: 0.7in; display: block; position: relative; }
+        .eudr-flag { position: absolute; right: 10px; top: 15px; font-size: 18pt; font-weight: normal; }
+        .row-9 { height: 0.7in; display: block; position: relative; }
+        .row-10 { height: 1.2in; display: block; position: relative; flex: 1; }
+
+        canvas { max-width: 98%; }
+
+        /* --- RESPONSIVE & PRINT --- */
+        @media (max-width: 900px) {
+            body { flex-direction: column; overflow: auto; height: auto; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+            .preview-area { padding: 20px; }
+            .label-container { transform: scale(0.85); transform-origin: top center; margin-bottom: 0; }
+        }
+
+        @media print {
+            body { display: block; padding: 0; margin: 0; background: none; overflow: visible; height: auto; }
+            .sidebar { display: none !important; }
+            .preview-area { display: block; padding: 0; margin: 0; background: none; overflow: visible; }
+            .preview-header { display: none; }
+            .label-container { 
+                border: 1px solid black; 
+                margin: 0; 
+                box-shadow: none; 
+                page-break-after: always; 
+                transform: none; 
+            }
+            .label-container:last-child { page-break-after: auto; }
+            @page { size: 4in 10in; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fa-solid fa-barcode" style="color:var(--primary);"></i> ระบบสร้างบาร์โค้ดให้อัตโนมัติ</h2>
+        </div>
+
+        <div class="sidebar-scroll">
+            <div class="section-title"><i class="fa-solid fa-layer-group"></i> ใส่ข้อมูลให้ถูกต้องนะครับ</div>
+            <div class="highlight-card">
+                <div class="input-group">
+                    <label>Serial Number (9 Digits)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-hashtag"></i>
+                        <input type="number" id="in_start_serial" value="548029001">
+                    </div>
+                </div>
+                <div class="input-group" style="margin-bottom:0;">
+                    <label>จำนวนที่ต้องการพิมพ์ (Copies)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-copy"></i>
+                        <input type="number" id="in_qty" value="15">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title"><i class="fa-solid fa-truck-fast"></i> Shipment Info</div>
+            
+            <div class="input-group">
+                <label>SHIP FROM</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-warehouse"></i>
+                    <textarea id="in_ship" rows="2">L.T. RUBBER CO.,LTD&#10;THAILAND</textarea>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>DESTINATION</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <textarea id="in_dest" rows="4">Camso Manufacturing USA Ltd&#10;1601 E South Avenue, Emporia, KS,&#10;66801 United States of America&#10;PLANT : US-API</textarea>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div class="input-group">
+                    <label>PG + IMP CODE</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-tag"></i>
+                        <input type="text" id="in_pg" value="PG08435AB">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>SMPT LOT NO.</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-cubes"></i>
+                        <input type="text" id="in_lot" value="548029">
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>PRODUCT DESCRIPTION</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-file-alt"></i>
+                    <input type="text" id="in_desc" value="RSS1 SB COLOR CONTROL">
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div class="input-group">
+                    <label>NIF Code</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-barcode"></i>
+                        <input type="text" id="in_nif" value="03312">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>PACKER</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-box-open"></i>
+                        <input type="text" id="in_packer" value="LTR">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div class="input-group">
+                    <label>DATE</label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-calendar"></i>
+                        <input type="date" id="in_date" value="2025-11-29">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Net Weight (KG)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-weight-hanging"></i>
+                        <input type="number" id="in_weight" value="1260">
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>EUDR</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-note-sticky"></i>
+                    <input type="text" id="in_eudr" value="EUDR">
+                </div>
+            </div>
+            
+            <div style="text-align:center; font-size:0.75rem; color:#94a3b8; margin-top:10px;">
+                System Dev. by <b>J-Attaphon</b><br> 
+                Te. 090 239 0789<br>   
+                ( IT Professional Specialist )
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn btn-primary" onclick="generateBatch()">
+                <i class="fa-solid fa-rotate"></i> Generate
+            </button>
+            <button class="btn btn-secondary" onclick="window.print()">
+                <i class="fa-solid fa-print"></i> Print
+            </button>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <div class="preview-header"><i class="fa-regular fa-eye"></i> Print Preview </div>
+        <div id="printableArea"></div>
+    </div>
+
+    <script>
+        const pad = (num, size) => ('000000000' + num).substr(-size);
+
+        function generateBatch() {
+            let ship = document.getElementById('in_ship').value;
+            let dest = document.getElementById('in_dest').value;
+            let pg = document.getElementById('in_pg').value.toUpperCase();
+            let desc = document.getElementById('in_desc').value.toUpperCase();
+            let lot = document.getElementById('in_lot').value.toUpperCase();
+            let nif = document.getElementById('in_nif').value.toUpperCase();
+            let packer = document.getElementById('in_packer').value.toUpperCase();
+            let dateRaw = document.getElementById('in_date').value;
+            let eudr = document.getElementById('in_eudr').value.toUpperCase();
+            let weightRaw = document.getElementById('in_weight').value;
+
+            let startSerialStr = document.getElementById('in_start_serial').value;
+            let qty = parseInt(document.getElementById('in_qty').value);
+
+            if(!startSerialStr || qty < 1) { 
+                alert("Please check Serial Number or Quantity."); 
+                return; 
+            }
+            let startSerial = parseInt(startSerialStr);
+            let container = document.getElementById('printableArea');
+            container.innerHTML = ''; 
+
+            // Date Format: DD/MM/YY
+            let dateFmt = "";
+            if(dateRaw) {
+                let d = new Date(dateRaw);
+                let dd = pad(d.getDate(), 2);
+                let mm = pad(d.getMonth() + 1, 2);
+                let yy = d.getFullYear().toString().substr(-2);
+                dateFmt = `${dd}/${mm}/${yy}`;
+            }
+            
+            let nifPadded = pad(nif, 5);
+            let weightPadded = pad(weightRaw, 6);
+            
+            // --- UPDATED LOGIC HERE ---
+            // Lot Space Logic (เว้นวรรค 3 เคาะ ตามภาพตัวอย่าง)
+            let lotSpace = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"; 
+            // --------------------------
+
+            for (let i = 0; i < qty; i++) {
+                let currentSerialNum = startSerial + i;
+                let currentSerialPadded = pad(currentSerialNum, 9);
+                let id_2d = `cvs_2d_${i}`;
+                let id_pg = `cvs_pg_${i}`;
+                let id_lot = `cvs_lot_${i}`;
+                let id_serial = `cvs_serial_${i}`;
+
+                // Construct Text String for 2D Barcode
+                let fullString = `${nifPadded}${pg}${currentSerialPadded}${lot}${lotSpace}${weightPadded}${dateFmt}`;
+
+                let labelHTML = `
+                <div class="label-container">
+                    <div class="row row-1">
+                        <div class="cell-half"><div class="addr-header">SHIP FROM :</div><div class="addr-text">${ship}</div></div>
+                        <div class="cell-half"><div class="addr-header">DESTINATION :</div><div class="addr-text">${dest}</div></div>
+                    </div>
+                    <div class="row row-2">
+                        <canvas id="${id_2d}"></canvas>
+                        <div class="text-under-2d">${fullString}</div>
+                    </div>
+                    <div class="row row-3 cell">
+                        <div class="field-label">PG + IMP CODE (P)</div>
+                        <div class="field-value">${pg}</div>
+                        <div class="barcode-1d-wrapper"><canvas id="${id_pg}" style="height:40px;"></canvas></div>
+                    </div>
+                    <div class="row row-4 cell">
+                        <div class="field-label">PRODUCT DESCRIPTION Descrition</div>
+                        <div class="field-value value-desc">${desc}</div>
+                    </div>
+                    <div class="row row-5 cell">
+                        <div class="field-label">SMPT LOT NO. (H)</div>
+                        <div class="field-value">${lot}</div>
+                        <div class="barcode-1d-wrapper"><canvas id="${id_lot}" style="height:50px;"></canvas></div>
+                    </div>
+                    <div class="row row-6 cell"><div class="field-label">NIF CODE (V)</div><div class="field-value">${nifPadded}</div></div>
+                    <div class="row row-7 cell"><div class="field-label">Packer Code / PACKER NAME</div><div class="field-value">${packer}</div></div>
+                    <div class="row row-8 cell">
+                        <div class="field-label">Date Of fabrication (DD/MM/YY)</div>
+                        <div class="field-value">${dateFmt}</div>
+                        <div class="eudr-flag">${eudr}</div>
+                    </div>
+                    <div class="row row-9 cell"><div class="field-label">Net weight ( Kg )</div><div class="field-value">${weightPadded}</div></div>
+                    <div class="row row-10 cell last">
+                        <div class="field-label">Serial Number (S)</div>
+                        <div class="field-value">${currentSerialPadded}</div>
+                        <div class="barcode-1d-wrapper"><canvas id="${id_serial}" style="height:50px;"></canvas></div>
+                    </div>
+                </div>
+                `;
+
+                container.insertAdjacentHTML('beforeend', labelHTML);
+
+                try {
+                    // ปรับ Scale Barcode ให้เต็มกรอบสวยงามเหมือนเดิม
+                    let opts1D = { bcid:'code128', scale:2, height:10, includetext:false, textxalign:'center' };
+                    // 2D Matrix
+                    bwipjs.toCanvas(id_2d, { bcid: 'datamatrix', text: fullString, scale: 3.5, includetext: false, padding:0 });
+                    // 1D Barcodes
+                    bwipjs.toCanvas(id_pg, { ...opts1D, text: 'P' + pg });
+                    bwipjs.toCanvas(id_lot, { ...opts1D, text: 'H' + lot });
+                    bwipjs.toCanvas(id_serial, { ...opts1D, text: 'S' + currentSerialPadded });
+                } catch (e) { console.error("Error label " + i, e); }
+            }
+        }
+
+        window.onload = function() { setTimeout(generateBatch, 500); };
+    </script>
+</body>
+</html>
