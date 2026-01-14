@@ -33,7 +33,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: /public # index.html (ถ้าอยู่ข้างนอกสุดใส่จุด .)
+          path: ('index.html') # index.html (ถ้าอยู่ข้างนอกสุดใส่จุด .)
 
       - name: Deploy to GitHub Pages
         id: deployment
