@@ -1,5 +1,4 @@
 name: Deploy to GitHub Pages
-
 on:
   push:
     branches: ["main"] # ทำงานเมื่อมีการแก้โค้ดที่ main
